@@ -3,7 +3,6 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use cargo::util::important_paths;
 use clap::{App, AppSettings, Arg, ArgMatches};
 
 pub fn get_options() -> Options {
@@ -40,19 +39,19 @@ fn build_cli_parser<'a>() -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                position of the current version to increment: major, minor or patch."))
 }
 
-fn find_git_dir(root: &Path) -> bool {
+fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
     let mut current = root;
 
     loop {
-        let potential = current.join(".git");
+        let potential = current.join(target);
 
         if fs::metadata(&potential).is_ok() {
-            return true
+            return Some(potential)
         }
 
         match current.parent() {
             Some(parent) => current = parent,
-            None => return false
+            None => return None
         }
     }
 }
@@ -81,11 +80,11 @@ pub struct Options {
 impl Options {
     fn from_matches(matches: ArgMatches) -> Options {
         let cwd = env::current_dir().unwrap();
-        let manifest = important_paths::find_project_manifest(&cwd, "Cargo.toml").unwrap();
+        let manifest = search_up_for(&cwd, "Cargo.toml").unwrap_or_else(|| panic!("couldn't find Cargo.toml"));
         let mut root = manifest.clone();
         root.pop();
         let has_git = has_git_on_path();
-        let has_git_dir = has_git && find_git_dir(&root);
+        let has_git_dir = has_git && search_up_for(&root, ".git").is_some();
         Options{
             version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")),
             git_tag: has_git_dir && !matches.is_present("no_git"),

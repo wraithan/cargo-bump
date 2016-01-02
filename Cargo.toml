@@ -10,5 +10,4 @@ keywords = ["cargo", "version"]
 license = "ISC"
 
 [dependencies]
-cargo = "0.6"
 clap = "1"

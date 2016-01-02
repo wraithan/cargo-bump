@@ -1,4 +1,3 @@
-extern crate cargo;
 extern crate clap;
 
 mod options;
