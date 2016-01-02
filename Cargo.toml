@@ -1,0 +1,14 @@
+[package]
+name = "cargo-bump"
+version = "0.0.0"
+authors = ["Wraithan (Chris McDonald) <xwraithanx@gmail.com>"]
+description = "Increments the version number of the current project."
+# documentation = ""
+repository = "https://github.com/wraithan/cargo-bump"
+readme = "README.md"
+keywords = ["cargo", "version"]
+license = "ISC"
+
+[dependencies]
+cargo = "0.6"
+clap = "1"
