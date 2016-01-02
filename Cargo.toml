@@ -10,4 +10,6 @@ keywords = ["cargo", "version"]
 license = "ISC"
 
 [dependencies]
-clap = "1"
+clap = "~1.5.4"
+toml = "0.1"
+semver = "0.2.0"
