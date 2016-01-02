@@ -11,6 +11,12 @@ This is meant to be a clone of `npm version` with the `pre*` version specifiers
 omitted as I rarely see the prerelease versions on
 [crates.io](https://crates.io/).
 
+## installation
+
+Install using cargo:
+
+`cargo install cargo-bump`
+
 ## examples
 
 Increment the patch version: `cargo bump` or `cargo bump patch`
@@ -25,18 +31,22 @@ Set the version number directly: `cargo bump 13.3.7`
 
 ## usage
 
-`cargo bump [options] [<newversion> | major | minor | patch]`
+```
+USAGE:
+        cargo bump [FLAGS] [<version> | major | minor | patch]
 
-Options:
+FLAGS:
+    -h, --help                  Prints help information
+        --no-git-tag-version    Disables the git iteractions
+    -v, --version               Prints version information
 
-* `--no-git-tag-version`: disables the git commit and tag. No effect if `.git`
-  is not detected.
-* `-m, --message`: sets the commit message replacing `%s` with the new version
-  number. No effect if `.git` is not detected.
+OPTIONS:
+    -m, --message <message>    Commit message, %s will be replaced with new version number
 
-Version is either a [semver](http://semver.org/) string containing the new
-version, or the part of the current version to increment: `major`, `minor`,
-`patch`.
+ARGS:
+    version    Version should be a semver (https://semver.org/) string or the
+               position of the current version to increment: major, minor or patch.
+```
 
 ## order of operations
 
