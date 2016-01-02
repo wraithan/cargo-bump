@@ -1,3 +1,5 @@
+[![crates.io](https://img.shields.io/crates/v/cargo-bump.svg)](https://crates.io/crate/cargo-bump)
+[![build status](https://travis-ci.org/wraithan/cargo-bump.svg?branch=master)](https://travis-ci.org/wraithan/cargo-bump)
 # cargo-bump
 
 **Note**: Until this package is 1.0.0 or higher, do not expect all of these
