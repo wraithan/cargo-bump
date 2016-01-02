@@ -89,7 +89,7 @@ impl Options {
         Options{
             version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")),
             git_tag: has_git_dir && !matches.is_present("no_git"),
-            message: matches.value_of("message").unwrap_or("tagging version %s").to_owned(),
+            message: matches.value_of("message").unwrap_or("v%s").to_owned(),
             root: root,
             manifest: manifest
         }
@@ -139,24 +139,24 @@ mod tests {
     #[test]
     fn bump_arg_only() {
         let input = vec!["cargo-bump", "bump"];
-        test_options(input, NewVersion::Patch, true, "tagging version %s")
+        test_options(input, NewVersion::Patch, true, "v%s")
     }
 
     #[test]
     fn version_arg_minor() {
         let input = vec!["cargo-bump", "bump", "minor"];
-        test_options(input, NewVersion::Minor, true, "tagging version %s")
+        test_options(input, NewVersion::Minor, true, "v%s")
     }
 
     #[test]
     fn git_tag_version_set() {
         let input = vec!["cargo-bump", "bump", "--no-git-tag-version"];
-        test_options(input, NewVersion::Patch, false, "tagging version %s")
+        test_options(input, NewVersion::Patch, false, "v%s")
     }
 
     #[test]
     fn commit_message_set() {
-        let input = vec!["cargo-bump", "bump", "-m", "stuff and things"];
-        test_options(input, NewVersion::Patch, true, "stuff and things")
+        let input = vec!["cargo-bump", "bump", "-m", "releasing version %s"];
+        test_options(input, NewVersion::Patch, true, "releasing version %s")
     }
 }
