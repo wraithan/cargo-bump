@@ -3,25 +3,21 @@ use semver::Version;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
-use toml::{Parser, Value, Table};
+use toml::{Parser, Value};
 
-pub fn get_current_version(file: &Path) -> (Version, Table) {
+pub fn get_current_version(file: &Path) -> (Version, Value) {
     let mut file = fs::File::open(file).unwrap();
     let mut raw_data = String::new();
     file.read_to_string(&mut raw_data).unwrap();
     let mut parser = Parser::new(&raw_data);
-    let parsed_data: Table = parser.parse()
-        .unwrap_or_else(|| panic!("couldn't parse Cargo.toml, {:?}", parser.errors));
-    let copy = parsed_data.clone();
-    let raw_version = parsed_data.get("package")
-        .unwrap_or_else(|| panic!("Cargo.toml is missing package section"))
-        .as_table()
-        .unwrap_or_else(|| panic!("package section ewas not a table"))
-        .get("version")
-        .unwrap_or_else(|| panic!("Cargo.toml is missing version field"))
+    let parsed_data = Value::Table(parser.parse()
+        .unwrap_or_else(|| panic!("couldn't parse Cargo.toml, {:?}", parser.errors)));
+    let raw_version = parsed_data.lookup("package.version")
+        .unwrap_or_else(|| panic!("package.version missing"))
         .as_str()
-        .unwrap_or_else(|| panic!("version field was not a string"));
-    (Version::parse(raw_version).unwrap(), copy)
+        .unwrap_or_else(|| panic!("version not a string"));
+
+    (Version::parse(raw_version).unwrap(), parsed_data.clone())
 }
 
 pub fn update_version(old: &mut Version, by: NewVersion) {

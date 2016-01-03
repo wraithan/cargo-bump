@@ -13,6 +13,13 @@ This is meant to be a clone of `npm version` with the `pre*` version specifiers
 omitted as I rarely see the prerelease versions on
 [crates.io](https://crates.io/).
 
+## warnings
+
+This currently does a destructive overwrite of your Cargo.toml and may reorder
+things and will lose comments. See
+[#1](https://github.com/wraithan/cargo-bump/issues/1) for why and what the plan
+is to fix this.
+
 ## installation
 
 Install using cargo:
