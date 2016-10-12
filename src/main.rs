@@ -1,53 +1,52 @@
 extern crate clap;
 extern crate semver;
-extern crate toml;
+extern crate tomllib;
 
 mod config;
 mod version;
 
-use std::fs::OpenOptions;
-use std::io::Write;
-use toml::Value;
+use std::path::Path;
+use std::io::{Read, Write};
+use std::fs::{File, OpenOptions};
+
+use semver::Version;
+use tomllib::TOMLParser;
+use tomllib::types::{Value, ParseResult};
 
 fn main() {
     let conf = config::get_config();
-    let (mut v, mut t) = version::get_current_version(&conf.manifest);
-    let old_version = v.clone();
-    version::update_version(&mut v, conf.version);
-    println!("Version {} -> {}", old_version, v);
-
-    match t {
-        Value::Table(ref mut top) => {
-            match top.get_mut("package").unwrap() {
-                &mut Value::Table(ref mut package) => {
-                    let version = package.entry("version".to_owned())
-                        .or_insert_with(|| panic!("missing package"));
-                    *version = toml::Value::String(v.to_string());
-                }
-                _ => panic!("package not a table")
-            }
-        }
-        _ => panic!("top not a table")
+    let raw_data = read_file(&conf.manifest);
+    let parser = TOMLParser::new();
+    let (mut parser, result) = parser.parse(&raw_data);
+    match result {
+        ParseResult::Full => {},
+        _ => panic!("couldn't parse Cargo.toml"),
     }
 
-    let new_manifest = build_new_manifest(t).unwrap();
-    let new_manifest_bytes = new_manifest.as_bytes();
+    let raw_value = parser.get_value("package.version").expect("package.version missing");
+    let mut version = if let Value::String(raw_version, _) = raw_value {
+        Version::parse(&raw_version).unwrap()
+    } else {
+        panic!("version not a string")
+    };
+
+    let old_version = version.clone();
+    version::update_version(&mut version, conf.version);
+    println!("Version {} -> {}", old_version, version);
+
+    parser.set_value("package.version", Value::basic_string(version.to_string()).unwrap());
+
     let mut f = OpenOptions::new()
         .write(true)
         .truncate(true)
         .open(&conf.manifest)
         .unwrap();
-    f.write_all(new_manifest_bytes).unwrap();
+    f.write_all(format!("{}", parser).as_bytes()).unwrap();
 }
 
-fn build_new_manifest(toml: Value) -> Option<String> {
-    match toml {
-        Value::Table(mut data) => {
-            let package_value = data.remove("package").unwrap();
-            Some(format!("[package]\n{}{}",
-                         package_value,
-                         toml::Value::Table(data)))
-        }
-        _ => None
-    }
+fn read_file(file: &Path) -> String {
+    let mut file = File::open(file).unwrap();
+    let mut raw_data = String::new();
+    file.read_to_string(&mut raw_data).unwrap();
+    raw_data
 }

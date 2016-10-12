@@ -11,4 +11,4 @@ version = "0.0.1"
 [dependencies]
 clap = "~1.5.4"
 semver = "0.2.0"
-toml = "0.1"
+tomllib = "0.1.2"
