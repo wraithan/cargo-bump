@@ -24,10 +24,9 @@ fn main() {
     }
 
     let raw_value = parser.get_value("package.version").expect("package.version missing");
-    let mut version = if let Value::String(raw_version, _) = raw_value {
-        Version::parse(&raw_version).unwrap()
-    } else {
-        panic!("version not a string")
+    let mut version = match raw_value {
+        Value::String(raw_version, _) => Version::parse(&raw_version).unwrap(),
+        _ => panic!("version not a string"),
     };
 
     let old_version = version.clone();
