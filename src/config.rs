@@ -13,7 +13,7 @@ pub fn get_config() -> Config {
 
 // Has crazy lifetimes due to how clap works. The app return value is never
 // exposed outside of this module, so I'm not very concerned.
-fn build_cli_parser<'a>() -> App<'a, 'a, 'a, 'a, 'a, 'a> {
+fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
     App::new("cargo-bump")
         .version(VERSION)
         .author("Wraithan McCarroll <xwraithanx@gmail.com>")

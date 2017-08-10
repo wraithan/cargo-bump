@@ -9,6 +9,6 @@ repository = "https://github.com/wraithan/cargo-bump"
 version = "1.0.0"
 
 [dependencies]
-clap = "~1.5.4"
-semver = "0.2.0"
+clap = "2.26.0"
+semver = "0.7.0"
 tomllib = "0.1.2"
