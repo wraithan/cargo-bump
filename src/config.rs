@@ -29,8 +29,7 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
                 .hidden(true),
         )
         .arg(Arg::with_name("version").index(2).help(
-            "Version should be a semver (https://semver.org/) string or the
-               position of the current version to increment: major, minor or patch.",
+            "Version should be a semver (https://semver.org/) string or the position of the current version to increment: major, minor or patch.",
         ))
 }
 
@@ -51,23 +50,9 @@ fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
     }
 }
 
-fn has_git_on_path() -> bool {
-    if let Some(paths) = env::var_os("PATH") {
-        for path in env::split_paths(&paths) {
-            let potential = path.join("git");
-            if fs::metadata(&potential).is_ok() {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Config {
     pub version: NewVersion,
-    pub git_tag: bool,
-    pub message: String,
     pub root: PathBuf,
     pub manifest: PathBuf,
 }
@@ -79,12 +64,8 @@ impl Config {
             search_up_for(&cwd, "Cargo.toml").unwrap_or_else(|| panic!("couldn't find Cargo.toml"));
         let mut root = manifest.clone();
         root.pop();
-        let has_git = has_git_on_path();
-        let has_git_dir = has_git && search_up_for(&root, ".git").is_some();
         Config {
             version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")),
-            git_tag: has_git_dir && !matches.is_present("no_git"),
-            message: matches.value_of("message").unwrap_or("v%s").to_owned(),
             root: root,
             manifest: manifest,
         }
@@ -94,7 +75,7 @@ impl Config {
 
 #[derive(Debug, PartialEq)]
 pub enum NewVersion {
-    String(Version),
+    Replace(Version),
     Major,
     Minor,
     Patch,
@@ -106,7 +87,9 @@ impl NewVersion {
             "major" => NewVersion::Major,
             "minor" => NewVersion::Minor,
             "patch" => NewVersion::Patch,
-            _ => NewVersion::String(Version::parse(input).expect("Invalid semver version, expected version or major, minor, patch")),
+            _ => NewVersion::Replace(Version::parse(input).expect(
+                "Invalid semver version, expected version or major, minor, patch",
+            )),
         }
     }
 }
@@ -148,7 +131,7 @@ mod tests {
         let input = vec!["cargo-bump", "bump", "1.2.3"];
         test_config(
             input,
-            NewVersion::String(Version::parse("1.2.3").unwrap()),
+            NewVersion::Replace(Version::parse("1.2.3").unwrap()),
             true,
             "v%s",
         )
