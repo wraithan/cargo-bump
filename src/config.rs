@@ -28,20 +28,6 @@ fn build_cli_parser<'a>() -> App<'a, 'a, 'a, 'a, 'a, 'a> {
                 .required(true)
                 .hidden(true),
         )
-        .arg(
-            Arg::with_name("no_git")
-                .long("no-git-tag-version")
-                .help("Disables the git iteractions"),
-        )
-        .arg(
-            Arg::with_name("message")
-                .short("m")
-                .long("message")
-                .takes_value(true)
-                .help(
-                    "Commit message, %s will be replaced with new version number",
-                ),
-        )
         .arg(Arg::with_name("version").index(2).help(
             "Version should be a semver (https://semver.org/) string or the
                position of the current version to increment: major, minor or patch.",
@@ -120,8 +106,7 @@ impl NewVersion {
             "major" => NewVersion::Major,
             "minor" => NewVersion::Minor,
             "patch" => NewVersion::Patch,
-            _ => NewVersion::String(Version::parse(input).unwrap()),
-
+            _ => NewVersion::String(Version::parse(input).expect("Invalid semver version, expected version or major, minor, patch")),
         }
     }
 }
@@ -168,17 +153,4 @@ mod tests {
             "v%s",
         )
     }
-
-    #[test]
-    fn git_tag_version_set() {
-        let input = vec!["cargo-bump", "bump", "--no-git-tag-version"];
-        test_config(input, NewVersion::Patch, false, "v%s")
-    }
-
-    #[test]
-    fn commit_message_set() {
-        let input = vec!["cargo-bump", "bump", "-m", "releasing version %s"];
-        test_config(input, NewVersion::Patch, true, "releasing version %s")
-    }
-
 }
