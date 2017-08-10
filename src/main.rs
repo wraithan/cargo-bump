@@ -11,7 +11,7 @@ use std::fs::{File, OpenOptions};
 
 use semver::Version;
 use tomllib::TOMLParser;
-use tomllib::types::{Value, ParseResult};
+use tomllib::types::{ParseResult, Value};
 
 fn main() {
     let conf = config::get_config();
@@ -19,11 +19,13 @@ fn main() {
     let parser = TOMLParser::new();
     let (mut parser, result) = parser.parse(&raw_data);
     match result {
-        ParseResult::Full => {},
+        ParseResult::Full => {}
         _ => panic!("couldn't parse Cargo.toml"),
     }
 
-    let raw_value = parser.get_value("package.version").expect("package.version missing");
+    let raw_value = parser
+        .get_value("package.version")
+        .expect("package.version missing");
     let mut version = match raw_value {
         Value::String(raw_version, _) => Version::parse(&raw_version).unwrap(),
         _ => panic!("version not a string"),
@@ -33,7 +35,10 @@ fn main() {
     version::update_version(&mut version, conf.version);
     println!("Version {} -> {}", old_version, version);
 
-    parser.set_value("package.version", Value::basic_string(version.to_string()).unwrap());
+    parser.set_value(
+        "package.version",
+        Value::basic_string(version.to_string()).unwrap(),
+    );
 
     let mut f = OpenOptions::new()
         .write(true)
