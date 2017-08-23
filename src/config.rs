@@ -101,7 +101,7 @@ mod tests {
     use std::env;
     use semver::Version;
 
-    fn test_config(input: Vec<&str>, version: NewVersion, git_tag: bool, message: &str) {
+    fn test_config(input: Vec<&str>, version: NewVersion) {
         let parser = build_cli_parser();
         let root = env::current_dir().unwrap();
         let mut manifest = root.clone();
@@ -109,8 +109,6 @@ mod tests {
         let matches = parser.get_matches_from_safe(input).unwrap();
         let config = Config::from_matches(matches);
         assert_eq!(config.version, version);
-        assert_eq!(config.git_tag, git_tag);
-        assert_eq!(&config.message, message);
         assert_eq!(config.root, root);
         assert_eq!(config.manifest, manifest);
     }
@@ -118,23 +116,18 @@ mod tests {
     #[test]
     fn bump_arg_only() {
         let input = vec!["cargo-bump", "bump"];
-        test_config(input, NewVersion::Patch, true, "v%s")
+        test_config(input, NewVersion::Patch)
     }
 
     #[test]
     fn version_arg_minor() {
         let input = vec!["cargo-bump", "bump", "minor"];
-        test_config(input, NewVersion::Minor, true, "v%s")
+        test_config(input, NewVersion::Minor)
     }
 
     #[test]
     fn version_arg_string_good() {
         let input = vec!["cargo-bump", "bump", "1.2.3"];
-        test_config(
-            input,
-            NewVersion::Replace(Version::parse("1.2.3").unwrap()),
-            true,
-            "v%s",
-        )
+        test_config(input, NewVersion::Replace(Version::parse("1.2.3").unwrap()))
     }
 }
