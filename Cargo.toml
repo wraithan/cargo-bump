@@ -1,7 +1,7 @@
 [package]
 authors = ["Wraithan (Chris McDonald) <xwraithanx@gmail.com>"]
 description = "Increments the version number of the current project."
-keywords = ["cargo", "version"]
+keywords = ["cargo", "version", "bump"]
 license = "ISC"
 name = "cargo-bump"
 readme = "README.md"
