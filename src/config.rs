@@ -3,16 +3,15 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use clap::{App, AppSettings, Arg, ArgMatches};
-use semver::Version;
+use semver::{SemVerError, Version};
 
 pub fn get_config() -> Config {
     let matches = build_cli_parser().get_matches();
     Config::from_matches(matches)
 }
 
-// Has crazy lifetimes due to how clap works. The app return value is never
-// exposed outside of this module, so I'm not very concerned.
 fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
     App::new("cargo-bump")
         .version(VERSION)
@@ -29,7 +28,8 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
                 .hidden(true),
         )
         .arg(Arg::with_name("version").index(2).help(
-            "Version should be a semver (https://semver.org/) string or the position of the current version to increment: major, minor or patch.",
+            "Version should be a semver (https://semver.org/) string or the \
+             position of the current version to increment: major, minor or patch.",
         ))
 }
 
@@ -65,7 +65,9 @@ impl Config {
         let mut root = manifest.clone();
         root.pop();
         Config {
-            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")),
+            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")).expect(
+                "Invalid semver version, expected version or major, minor, patch",
+            ),
             root: root,
             manifest: manifest,
         }
@@ -81,16 +83,15 @@ pub enum NewVersion {
     Patch,
 }
 
-impl NewVersion {
-    fn from_str(input: &str) -> NewVersion {
-        match input {
+impl FromStr for NewVersion {
+    type Err = SemVerError;
+    fn from_str(input: &str) -> Result<NewVersion, Self::Err> {
+        Ok(match input {
             "major" => NewVersion::Major,
             "minor" => NewVersion::Minor,
             "patch" => NewVersion::Patch,
-            _ => NewVersion::Replace(Version::parse(input).expect(
-                "Invalid semver version, expected version or major, minor, patch",
-            )),
-        }
+            _ => NewVersion::Replace(Version::parse(input)?),
+        })
     }
 }
 
