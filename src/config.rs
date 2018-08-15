@@ -21,17 +21,26 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
         .about("Increments the version number in Cargo.toml as specified.")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version_short("v")
-        .arg(
-            Arg::with_name("bump")
+        .arg(Arg::with_name("bump")
                 .possible_value("bump")
                 .index(1)
                 .required(true)
-                .hidden(true),
-        )
+                .hidden(true))
         .arg(Arg::with_name("version").index(2).help(
             "Version should be a semver (https://semver.org/) string or the \
-             position of the current version to increment: major, minor or patch.",
-        ))
+             position of the current version to increment: major, minor or patch."))
+        .arg(Arg::with_name("major")
+            .long("major")
+            .conflicts_with_all(&["minor", "patch"])
+            .help("Increment major version"))
+        .arg(Arg::with_name("minor")
+            .long("minor")
+            .conflicts_with_all(&["major", "patch"])
+            .help("Increment minor version"))
+        .arg(Arg::with_name("patch")
+            .long("patch")
+            .conflicts_with_all(&["minor", "major"])
+            .help("Increment patch version"))
         .arg(Arg::with_name("print")
             .long("print")
             .help("Only print the crate version as the output"))
@@ -65,14 +74,22 @@ pub struct Config {
 impl Config {
     fn from_matches(matches: ArgMatches) -> Config {
         let cwd = env::current_dir().unwrap();
-        let manifest =
-            search_up_for(&cwd, "Cargo.toml").unwrap_or_else(|| panic!("couldn't find Cargo.toml"));
+        let manifest = search_up_for(&cwd, "Cargo.toml").expect("couldn't find Cargo.toml");
         let mut root = manifest.clone();
         root.pop();
 
         let print_version_only = matches.is_present("print");
 
-        let version = if let Some(arg) = matches.value_of("version") {
+        let version = if matches.is_present("major") {
+            assert!(!matches.is_present("version"), "Version can't be specified when using --major");
+            Some(NewVersion::Major)
+        } else if matches.is_present("minor") {
+            assert!(!matches.is_present("version"), "Version can't be specified when using --minor");
+            Some(NewVersion::Minor)
+        } else if matches.is_present("patch") {
+            assert!(!matches.is_present("version"), "Version can't be specified when using --patch");
+            Some(NewVersion::Patch)
+        } else if let Some(arg) = matches.value_of("version") {
             Some(NewVersion::from_str(arg)
                 .expect("Invalid semver version, expected version or major, minor, patch"))
         } else if print_version_only {
