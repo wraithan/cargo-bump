@@ -32,8 +32,15 @@ fn main() {
     };
 
     let old_version = version.clone();
-    version::update_version(&mut version, conf.version);
-    println!("Version {} -> {}", old_version, version);
+    if let Some(new_version) = conf.version {
+        version::update_version(&mut version, new_version);
+    }
+
+    if conf.print_version_only {
+        println!("{}", version);
+    } else {
+        println!("Version {} -> {}", old_version, version);
+    }
 
     parser.set_value(
         "package.version",

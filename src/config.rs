@@ -15,6 +15,7 @@ pub fn get_config() -> Config {
 fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
     App::new("cargo-bump")
         .version(VERSION)
+        .version_message("Prints version of the cargo-bump utility itself")
         .author("Wraithan McCarroll <xwraithanx@gmail.com>")
         .usage("cargo bump [FLAGS] [<version> | major | minor | patch]")
         .about("Increments the version number in Cargo.toml as specified.")
@@ -31,6 +32,9 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
             "Version should be a semver (https://semver.org/) string or the \
              position of the current version to increment: major, minor or patch.",
         ))
+        .arg(Arg::with_name("print")
+            .long("print")
+            .help("Only print the crate version as the output"))
 }
 
 fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
@@ -52,7 +56,8 @@ fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
-    pub version: NewVersion,
+    pub version: Option<NewVersion>,
+    pub print_version_only: bool,
     pub root: PathBuf,
     pub manifest: PathBuf,
 }
@@ -64,10 +69,21 @@ impl Config {
             search_up_for(&cwd, "Cargo.toml").unwrap_or_else(|| panic!("couldn't find Cargo.toml"));
         let mut root = manifest.clone();
         root.pop();
+
+        let print_version_only = matches.is_present("print");
+
+        let version = if let Some(arg) = matches.value_of("version") {
+            Some(NewVersion::from_str(arg)
+                .expect("Invalid semver version, expected version or major, minor, patch"))
+        } else if print_version_only {
+            None
+        } else {
+            Some(NewVersion::Patch)
+        };
+
         Config {
-            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")).expect(
-                "Invalid semver version, expected version or major, minor, patch",
-            ),
+            version,
+            print_version_only,
             root: root,
             manifest: manifest,
         }
@@ -108,7 +124,7 @@ mod tests {
         manifest.push("Cargo.toml");
         let matches = parser.get_matches_from_safe(input).unwrap();
         let config = Config::from_matches(matches);
-        assert_eq!(config.version, version);
+        assert_eq!(config.version, Some(version));
         assert_eq!(config.root, root);
         assert_eq!(config.manifest, manifest);
     }
