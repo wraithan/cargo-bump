@@ -2,7 +2,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use cargo_metadata::MetadataCommand;
 use clap::{App, AppSettings, Arg, ArgMatches};
-use semver::{SemVerError, Version};
+use semver::{Identifier, SemVerError, Version};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -36,11 +36,28 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
             "Version should be a semver (https://semver.org/) string or the \
              position of the current version to increment: major, minor or patch.",
         ))
+        .arg(
+            Arg::with_name("pre-release")
+                .short("p")
+                .long("pre-release")
+                .takes_value(true)
+                .help("Optional pre-release information."),
+        )
+        .arg(
+            Arg::with_name("metadata")
+                .short("m")
+                .long("metadata")
+                .takes_value(true)
+                .help("Optional metadata for this version."),
+        )
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
     pub version: NewVersion,
+    pub metadata: Option<Vec<Identifier>>,
+    pub pre_release: Option<Vec<Identifier>>,
+
     pub manifest: PathBuf,
 }
 
@@ -57,6 +74,8 @@ impl Config {
         if metadata.workspace_members.len() == 1 {
             Config {
                 version,
+                metadata: matches.value_of("metadata").map(parse_identifiers),
+                pre_release: matches.value_of("pre-release").map(parse_identifiers),
                 manifest: metadata[&metadata.workspace_members[0]]
                     .manifest_path
                     .clone(),
@@ -65,6 +84,19 @@ impl Config {
             panic!("Workspaces are not supported yet.");
         }
     }
+}
+
+fn parse_identifiers(value: &str) -> Vec<Identifier> {
+    value
+        .split('.')
+        .map(|identifier| {
+            if let Ok(i) = identifier.parse() {
+                Identifier::Numeric(i)
+            } else {
+                Identifier::AlphaNumeric(identifier.to_string())
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, PartialEq)]

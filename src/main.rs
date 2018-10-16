@@ -46,7 +46,7 @@ fn update_toml_with_version(raw_data: &str, version_modifier: config::NewVersion
         let mut version = version_string
             .parse::<Version>()
             .expect("version is semver");
-        version::update_version(&mut version, version_modifier);
+        version::update_version(&mut version, version_modifier, None, None);
         version
     };
     value["package"]["version"] = toml_edit::value(version.to_string());
