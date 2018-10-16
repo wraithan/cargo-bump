@@ -1,11 +1,11 @@
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
+use clap::{App, AppSettings, Arg, ArgMatches};
+use semver::{Identifier, SemVerError, Version};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use clap::{App, AppSettings, Arg, ArgMatches};
-use semver::{SemVerError, Version};
 
 pub fn get_config() -> Config {
     let matches = build_cli_parser().get_matches();
@@ -31,6 +31,20 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
             "Version should be a semver (https://semver.org/) string or the \
              position of the current version to increment: major, minor or patch.",
         ))
+        .arg(
+            Arg::with_name("pre-release")
+                .short("p")
+                .long("pre-release")
+                .takes_value(true)
+                .help("Optional pre-release information."),
+        )
+        .arg(
+            Arg::with_name("metadata")
+                .short("m")
+                .long("metadata")
+                .takes_value(true)
+                .help("Optional metadata for this version."),
+        )
 }
 
 fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
@@ -53,6 +67,9 @@ fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
 #[derive(Debug, PartialEq)]
 pub struct Config {
     pub version: NewVersion,
+    pub metadata: Option<Vec<Identifier>>,
+    pub pre_release: Option<Vec<Identifier>>,
+
     pub root: PathBuf,
     pub manifest: PathBuf,
 }
@@ -65,15 +82,28 @@ impl Config {
         let mut root = manifest.clone();
         root.pop();
         Config {
-            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")).expect(
-                "Invalid semver version, expected version or major, minor, patch",
-            ),
+            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch"))
+                .expect("Invalid semver version, expected version or major, minor, patch"),
+            metadata: matches.value_of("metadata").map(parse_identifiers),
+            pre_release: matches.value_of("pre-release").map(parse_identifiers),
             root: root,
             manifest: manifest,
         }
     }
 }
 
+fn parse_identifiers(value: &str) -> Vec<Identifier> {
+    value
+        .split('.')
+        .map(|identifier| {
+            if let Ok(i) = identifier.parse() {
+                Identifier::Numeric(i)
+            } else {
+                Identifier::AlphaNumeric(identifier.to_string())
+            }
+        })
+        .collect()
+}
 
 #[derive(Debug, PartialEq)]
 pub enum NewVersion {
@@ -98,8 +128,8 @@ impl FromStr for NewVersion {
 #[cfg(test)]
 mod tests {
     use super::{build_cli_parser, Config, NewVersion};
-    use std::env;
     use semver::Version;
+    use std::env;
 
     fn test_config(input: Vec<&str>, version: NewVersion) {
         let parser = build_cli_parser();

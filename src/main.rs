@@ -5,13 +5,13 @@ extern crate tomllib;
 mod config;
 mod version;
 
-use std::path::Path;
-use std::io::{Read, Write};
 use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::path::Path;
 
 use semver::Version;
-use tomllib::TOMLParser;
 use tomllib::types::{ParseResult, Value};
+use tomllib::TOMLParser;
 
 fn main() {
     let conf = config::get_config();
@@ -32,7 +32,7 @@ fn main() {
     };
 
     let old_version = version.clone();
-    version::update_version(&mut version, conf.version);
+    version::update_version(&mut version, conf.version, conf.pre_release, conf.metadata);
     println!("Version {} -> {}", old_version, version);
 
     parser.set_value(
