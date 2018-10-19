@@ -14,4 +14,4 @@ travis-ci = {repository = "wraithan/cargo-bump", branch = "master" }
 [dependencies]
 clap = "2.26.0"
 semver = "0.9.0"
-tomllib = "0.1.2"
+toml_edit = "0.1"
