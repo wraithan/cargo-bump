@@ -32,6 +32,13 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
                 .value_name("PATH")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("package")
+                .short("p")
+                .long("package")
+                .takes_value(true)
+                .help("Selects the package to bump if in a workspace"),
+        )
         .arg(Arg::with_name("version").index(2).help(
             "Version should be a semver (https://semver.org/) string or the \
              position of the current version to increment: major, minor or patch.",
@@ -54,7 +61,18 @@ impl Config {
             metadata_cmd.manifest_path(path);
         }
         let metadata = metadata_cmd.exec().expect("get cargo metadata");
-        if metadata.workspace_members.len() == 1 {
+
+        if let Some(package_name) = matches.value_of("package") {
+            for package in metadata.packages {
+                if package.name == package_name {
+                    return Config {
+                        version,
+                        manifest: package.manifest_path.clone(),
+                    };
+                }
+            }
+            panic!("Specified package {} not found.", package_name);
+        } else if metadata.workspace_members.len() == 1 {
             Config {
                 version,
                 manifest: metadata[&metadata.workspace_members[0]]
@@ -62,7 +80,7 @@ impl Config {
                     .clone(),
             }
         } else {
-            panic!("Workspaces are not supported yet.");
+            panic!("Unable to find manifest");
         }
     }
 }
