@@ -1,5 +1,5 @@
-use semver::Version;
 use config::NewVersion;
+use semver::Version;
 
 pub fn update_version(old: &mut Version, by: NewVersion) {
     match by {

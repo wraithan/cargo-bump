@@ -5,13 +5,13 @@ extern crate tomllib;
 mod config;
 mod version;
 
-use std::path::Path;
-use std::io::{Read, Write};
 use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::path::Path;
 
 use semver::Version;
-use tomllib::TOMLParser;
 use tomllib::types::{ParseResult, Value};
+use tomllib::TOMLParser;
 
 fn main() {
     let conf = config::get_config();

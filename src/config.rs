@@ -1,11 +1,11 @@
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+use clap::{App, AppSettings, Arg, ArgMatches};
+use semver::{SemVerError, Version};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use clap::{App, AppSettings, Arg, ArgMatches};
-use semver::{SemVerError, Version};
 
 pub fn get_config() -> Config {
     let matches = build_cli_parser().get_matches();
@@ -65,15 +65,13 @@ impl Config {
         let mut root = manifest.clone();
         root.pop();
         Config {
-            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch")).expect(
-                "Invalid semver version, expected version or major, minor, patch",
-            ),
-            root: root,
-            manifest: manifest,
+            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch"))
+                .expect("Invalid semver version, expected version or major, minor, patch"),
+            root,
+            manifest,
         }
     }
 }
-
 
 #[derive(Debug, PartialEq)]
 pub enum NewVersion {
@@ -98,8 +96,8 @@ impl FromStr for NewVersion {
 #[cfg(test)]
 mod tests {
     use super::{build_cli_parser, Config, NewVersion};
-    use std::env;
     use semver::Version;
+    use std::env;
 
     fn test_config(input: Vec<&str>, version: NewVersion) {
         let parser = build_cli_parser();
