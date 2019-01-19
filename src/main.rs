@@ -1,3 +1,6 @@
+#![deny(clippy::all)]
+
+extern crate cargo_metadata;
 extern crate clap;
 extern crate semver;
 extern crate tomllib;

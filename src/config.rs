@@ -1,10 +1,9 @@
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+use cargo_metadata::MetadataCommand;
 use clap::{App, AppSettings, Arg, ArgMatches};
 use semver::{SemVerError, Version};
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 pub fn get_config() -> Config {
@@ -33,42 +32,26 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
         ))
 }
 
-fn search_up_for(root: &Path, target: &str) -> Option<PathBuf> {
-    let mut current = root;
-
-    loop {
-        let potential = current.join(target);
-
-        if fs::metadata(&potential).is_ok() {
-            return Some(potential);
-        }
-
-        match current.parent() {
-            Some(parent) => current = parent,
-            None => return None,
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Config {
     pub version: NewVersion,
-    pub root: PathBuf,
     pub manifest: PathBuf,
 }
 
 impl Config {
     fn from_matches(matches: ArgMatches) -> Config {
-        let cwd = env::current_dir().unwrap();
-        let manifest =
-            search_up_for(&cwd, "Cargo.toml").unwrap_or_else(|| panic!("couldn't find Cargo.toml"));
-        let mut root = manifest.clone();
-        root.pop();
-        Config {
-            version: NewVersion::from_str(matches.value_of("version").unwrap_or("patch"))
-                .expect("Invalid semver version, expected version or major, minor, patch"),
-            root,
-            manifest,
+        let version = NewVersion::from_str(matches.value_of("version").unwrap_or("patch"))
+            .expect("Invalid semver version, expected version or major, minor, patch");
+        let metadata = MetadataCommand::new().exec().expect("get cargo metadata");
+        if metadata.workspace_members.len() == 1 {
+            Config {
+                version,
+                manifest: metadata[&metadata.workspace_members[0]]
+                    .manifest_path
+                    .clone(),
+            }
+        } else {
+            panic!("Workspaces are not supported yet.");
         }
     }
 }
@@ -107,7 +90,6 @@ mod tests {
         let matches = parser.get_matches_from_safe(input).unwrap();
         let config = Config::from_matches(matches);
         assert_eq!(config.version, version);
-        assert_eq!(config.root, root);
         assert_eq!(config.manifest, manifest);
     }
 

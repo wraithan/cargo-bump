@@ -15,3 +15,4 @@ travis-ci = {repository = "wraithan/cargo-bump", branch = "master" }
 clap = "2.26.0"
 semver = "0.7.0"
 tomllib = "0.1.2"
+cargo_metadata = "0.7.0"
