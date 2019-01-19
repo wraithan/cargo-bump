@@ -26,6 +26,12 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
                 .required(true)
                 .hidden(true),
         )
+        .arg(
+            Arg::with_name("manifest-path")
+                .long("manifest-path")
+                .value_name("PATH")
+                .takes_value(true),
+        )
         .arg(Arg::with_name("version").index(2).help(
             "Version should be a semver (https://semver.org/) string or the \
              position of the current version to increment: major, minor or patch.",
@@ -42,7 +48,12 @@ impl Config {
     fn from_matches(matches: ArgMatches) -> Config {
         let version = NewVersion::from_str(matches.value_of("version").unwrap_or("patch"))
             .expect("Invalid semver version, expected version or major, minor, patch");
-        let metadata = MetadataCommand::new().exec().expect("get cargo metadata");
+
+        let mut metadata_cmd = MetadataCommand::new();
+        if let Some(path) = matches.value_of("manifest-path") {
+            metadata_cmd.manifest_path(path);
+        }
+        let metadata = metadata_cmd.exec().expect("get cargo metadata");
         if metadata.workspace_members.len() == 1 {
             Config {
                 version,
