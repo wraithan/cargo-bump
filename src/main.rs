@@ -3,7 +3,7 @@
 extern crate cargo_metadata;
 extern crate clap;
 extern crate semver;
-extern crate tomllib;
+extern crate toml_edit;
 
 mod config;
 mod version;
@@ -13,8 +13,6 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use semver::Version;
-use tomllib::types::{ParseResult, Value};
-use tomllib::TOMLParser;
 
 fn main() {
     let conf = config::get_config();
@@ -37,31 +35,23 @@ fn read_file(file: &Path) -> String {
     raw_data
 }
 
-fn update_toml_with_version(raw_data: &str, new_version: config::NewVersion) -> String {
-    let parser = TOMLParser::new();
-    let (mut parser, result) = parser.parse(raw_data);
-    match result {
-        ParseResult::Full => {}
-        _ => panic!("couldn't parse Cargo.toml"),
-    }
-
-    let raw_value = parser
-        .get_value("package.version")
-        .expect("package.version missing");
-    let mut version = match raw_value {
-        Value::String(raw_version, _) => Version::parse(&raw_version).unwrap(),
-        _ => panic!("version not a string"),
+fn update_toml_with_version(raw_data: &str, version_modifier: config::NewVersion) -> String {
+    let mut value = raw_data
+        .parse::<toml_edit::Document>()
+        .expect("parsed toml");
+    let version = {
+        let version_string = value["package"]["version"]
+            .as_str()
+            .expect("toml has version");
+        let mut version = version_string
+            .parse::<Version>()
+            .expect("version is semver");
+        version::update_version(&mut version, version_modifier);
+        version
     };
+    value["package"]["version"] = toml_edit::value(version.to_string());
 
-    let old_version = version.clone();
-    version::update_version(&mut version, new_version);
-    println!("Version {} -> {}", old_version, version);
-
-    parser.set_value(
-        "package.version",
-        Value::basic_string(version.to_string()).unwrap(),
-    );
-    format!("{}", parser)
+    value.to_string()
 }
 
 #[cfg(test)]
@@ -78,7 +68,8 @@ mod test {
         let expected_output = template.replace("$VERSION", &format!("\"{}\"", end_version));
         let output = update_toml_with_version(&input, version_modifier);
         assert_eq!(
-            output, expected_output,
+            expected_output,
+            output.trim_end(),
             "toml output should be same with new version"
         );
     }
@@ -101,6 +92,82 @@ version = $VERSION";
     fn toml_test_formatting_preserved_spaces() {
         let input = "  [package]
     version = $VERSION";
+        let version_modifier = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
+        let version_modifier = "patch".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
+        let version_modifier = "minor".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
+        let version_modifier = "major".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+
+        let input = "  [package]
+version= $VERSION";
+        let version_modifier = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
+        let version_modifier = "patch".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
+        let version_modifier = "minor".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
+        let version_modifier = "major".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+
+        let input = "  [package]
+version       = $VERSION";
+        let version_modifier = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
+        let version_modifier = "patch".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
+        let version_modifier = "minor".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
+        let version_modifier = "major".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+    }
+
+    #[test]
+    #[ignore = "toml_edit doesn't expose enough to preserve whitespace around replaced string"]
+    fn toml_test_formatting_preserved_space_around_replaced_value() {
+        let input = "  [package]
+version =$VERSION";
+        let version_modifier = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
+        let version_modifier = "patch".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
+        let version_modifier = "minor".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
+        let version_modifier = "major".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+
+        let input = "  [package]
+version =    $VERSION";
+        let version_modifier = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
+        let version_modifier = "patch".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
+        let version_modifier = "minor".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
+        let version_modifier = "major".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+
+        let input = "  [package]
+version = $VERSION      ";
+        let version_modifier = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
+        let version_modifier = "patch".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
+        let version_modifier = "minor".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
+        let version_modifier = "major".parse().expect("version modifier");
+        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+    }
+
+    #[test]
+    #[ignore = "toml_edit doesn't handle preserving space in headers save test for later"]
+    fn toml_test_formatting_preserved_header_spaces() {
+        let input = "  [package]
+    version = $VERSION
+[     other]
+a = true";
         let version_modifier = "1.0.0".parse().expect("version modifier");
         toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
         let version_modifier = "patch".parse().expect("version modifier");
@@ -153,7 +220,7 @@ version = $VERSION";
         toml_test_wrapper(input, version_modifier, "1.0.0", "2.0.0");
 
         let input = "[package]# end of header
-version= $VERSION";
+version = $VERSION";
         let version_modifier = "1.0.0".parse().expect("version modifier");
         toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
         let version_modifier = "patch".parse().expect("version modifier");
@@ -165,7 +232,7 @@ version= $VERSION";
 
         let input = "[package]
 # version = \"2.0.0\"
-version= $VERSION";
+version = $VERSION";
         let version_modifier = "1.0.0".parse().expect("version modifier");
         toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
         let version_modifier = "patch".parse().expect("version modifier");
@@ -177,7 +244,6 @@ version= $VERSION";
     }
 
     #[test]
-    #[ignore = "tomllib can't handle having [a] and [a.b] in the same file"]
     fn toml_test_dotted_headers() {
         let input = "[package]
 version = $VERSION
