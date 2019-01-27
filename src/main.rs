@@ -18,7 +18,7 @@ fn main() {
     let conf = config::get_config();
     let raw_data = read_file(&conf.manifest);
 
-    let output = update_toml_with_version(&raw_data, conf.version);
+    let output = update_toml_with_version(&raw_data, conf.version_modifier);
 
     let mut f = OpenOptions::new()
         .write(true)
@@ -35,7 +35,7 @@ fn read_file(file: &Path) -> String {
     raw_data
 }
 
-fn update_toml_with_version(raw_data: &str, version_modifier: config::NewVersion) -> String {
+fn update_toml_with_version(raw_data: &str, version_modifier: config::VersionModifier) -> String {
     let mut value = raw_data
         .parse::<toml_edit::Document>()
         .expect("parsed toml");
@@ -46,7 +46,7 @@ fn update_toml_with_version(raw_data: &str, version_modifier: config::NewVersion
         let mut version = version_string
             .parse::<Version>()
             .expect("version is semver");
-        version::update_version(&mut version, version_modifier, None, None);
+        version::update_version(&mut version, version_modifier);
         version
     };
     value["package"]["version"] = toml_edit::value(version.to_string());
@@ -57,10 +57,11 @@ fn update_toml_with_version(raw_data: &str, version_modifier: config::NewVersion
 #[cfg(test)]
 mod test {
     use super::*;
+    use config::{ModifierType, VersionModifier};
 
     fn toml_test_wrapper(
         template: &str,
-        version_modifier: config::NewVersion,
+        version_modifier: VersionModifier,
         start_version: &str,
         end_version: &str,
     ) {
@@ -78,50 +79,145 @@ mod test {
     fn toml_test_simple() {
         let input = "[package]
 version = $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.1.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.1.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "2.0.0",
+        );
+        let version_mod = VersionModifier::new(ModifierType::Major, Some("RC"), None);
+        toml_test_wrapper(input, version_mod, "1.0.0", "2.0.0-RC");
+        let version_mod = VersionModifier::new(
+            ModifierType::Major,
+            None,
+            Some("ac44f1f8f31acf4728bd2055d716776b"),
+        );
+        toml_test_wrapper(
+            input,
+            version_mod,
+            "1.0.0",
+            "2.0.0+ac44f1f8f31acf4728bd2055d716776b",
+        );
+        let version_mod = VersionModifier::new(ModifierType::Major, Some("alpha"), Some("2230"));
+        toml_test_wrapper(input, version_mod, "1.0.0", "2.0.0-alpha+2230");
     }
 
     #[test]
     fn toml_test_formatting_preserved_spaces() {
         let input = "  [package]
     version = $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
 
         let input = "  [package]
 version= $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
 
         let input = "  [package]
 version       = $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
     }
 
     #[test]
@@ -129,36 +225,96 @@ version       = $VERSION";
     fn toml_test_formatting_preserved_space_around_replaced_value() {
         let input = "  [package]
 version =$VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
 
         let input = "  [package]
 version =    $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
 
         let input = "  [package]
 version = $VERSION      ";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
     }
 
     #[test]
@@ -168,25 +324,65 @@ version = $VERSION      ";
     version = $VERSION
 [     other]
 a = true";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.1.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.1.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.0",
+            "2.0.0",
+        );
 
         let input = "  [  package   ]
     version= $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.1", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.1", "1.1.2");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.1", "1.2.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.1.1", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.1",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.1",
+            "1.1.2",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.1",
+            "1.2.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.1.1",
+            "2.0.0",
+        );
 
         let input = "  [  package   ]
 
@@ -195,14 +391,34 @@ a = true";
     version= $VERSION
     
     ";
-        let version_modifier = "4.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "2.0.0", "4.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "2.0.0", "2.0.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "2.0.0", "2.1.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "2.0.0", "3.0.0");
+        let mod_type = "4.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "2.0.0",
+            "4.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "2.0.0",
+            "2.0.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "2.0.0",
+            "2.1.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "2.0.0",
+            "3.0.0",
+        );
     }
 
     #[test]
@@ -210,37 +426,97 @@ a = true";
         let input = "#before header
 [package]
 version = $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.1.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.1.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "2.0.0",
+        );
 
         let input = "[package]# end of header
 version = $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.1.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.1.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "2.0.0",
+        );
 
         let input = "[package]
 # version = \"2.0.0\"
 version = $VERSION";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.1.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.1.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "2.0.0",
+        );
     }
 
     #[test]
@@ -253,13 +529,33 @@ d = false
 
 [a.b]
 c = true";
-        let version_modifier = "1.0.0".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.0");
-        let version_modifier = "patch".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.0.1");
-        let version_modifier = "minor".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "1.1.0");
-        let version_modifier = "major".parse().expect("version modifier");
-        toml_test_wrapper(input, version_modifier, "1.0.0", "2.0.0");
+        let mod_type = "1.0.0".parse().expect("version modifier");
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.0",
+        );
+        let mod_type = ModifierType::Patch;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.0.1",
+        );
+        let mod_type = ModifierType::Minor;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "1.1.0",
+        );
+        let mod_type = ModifierType::Major;
+        toml_test_wrapper(
+            input,
+            VersionModifier::from_mod_type(mod_type),
+            "1.0.0",
+            "2.0.0",
+        );
     }
 }

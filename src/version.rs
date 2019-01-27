@@ -1,31 +1,26 @@
-use config::NewVersion;
-use semver::{Identifier, Version};
+use config::{ModifierType, VersionModifier};
+use semver::Version;
 
-pub fn update_version(
-    old: &mut Version,
-    by: NewVersion,
-    pre_release: Option<Vec<Identifier>>,
-    metadata: Option<Vec<Identifier>>,
-) {
-    match by {
-        NewVersion::Replace(v) => {
+pub fn update_version(old: &mut Version, by: VersionModifier) {
+    match by.mod_type {
+        ModifierType::Replace(v) => {
             *old = v;
         }
-        NewVersion::Major => {
+        ModifierType::Major => {
             old.increment_major();
         }
-        NewVersion::Minor => {
+        ModifierType::Minor => {
             old.increment_minor();
         }
-        NewVersion::Patch => {
+        ModifierType::Patch => {
             old.increment_patch();
         }
     }
 
-    if let Some(pre) = pre_release {
+    if let Some(pre) = by.pre_release {
         old.pre = pre;
     }
-    if let Some(build) = metadata {
+    if let Some(build) = by.build_metadata {
         old.build = build;
     }
 }
