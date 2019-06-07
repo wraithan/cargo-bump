@@ -6,26 +6,33 @@ extern crate semver;
 extern crate toml_edit;
 
 mod config;
+mod git;
 mod version;
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
+use toml_edit::Document;
 
 use semver::Version;
 
 fn main() {
+    git::git_check();
+
     let conf = config::get_config();
     let raw_data = read_file(&conf.manifest);
 
     let output = update_toml_with_version(&raw_data, conf.version_modifier);
+    let version = output["package"]["version"].as_str().unwrap();
 
     let mut f = OpenOptions::new()
         .write(true)
         .truncate(true)
         .open(&conf.manifest)
         .unwrap();
-    f.write_all(output.as_bytes()).unwrap();
+    f.write_all(output.to_string().as_bytes()).unwrap();
+
+    git::git_commit_and_tag(version);
 }
 
 fn read_file(file: &Path) -> String {
@@ -35,7 +42,7 @@ fn read_file(file: &Path) -> String {
     raw_data
 }
 
-fn update_toml_with_version(raw_data: &str, version_modifier: config::VersionModifier) -> String {
+fn update_toml_with_version(raw_data: &str, version_modifier: config::VersionModifier) -> Document {
     let mut value = raw_data
         .parse::<toml_edit::Document>()
         .expect("parsed toml");
@@ -51,7 +58,7 @@ fn update_toml_with_version(raw_data: &str, version_modifier: config::VersionMod
     };
     value["package"]["version"] = toml_edit::value(version.to_string());
 
-    value.to_string()
+    value
 }
 
 #[cfg(test)]
@@ -70,7 +77,7 @@ mod test {
         let output = update_toml_with_version(&input, version_modifier);
         assert_eq!(
             expected_output,
-            output.trim_end(),
+            output.to_string().trim_end(),
             "toml output should be same with new version"
         );
     }
