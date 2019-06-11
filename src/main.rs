@@ -17,10 +17,13 @@ use toml_edit::Document;
 use semver::Version;
 
 fn main() {
-    git::git_check();
-
     let conf = config::get_config();
     let raw_data = read_file(&conf.manifest);
+    let use_git = conf.git_tag;
+
+    if use_git {
+        git::git_check();
+    }
 
     let output = update_toml_with_version(&raw_data, conf.version_modifier);
     let version = output["package"]["version"].as_str().unwrap();
@@ -32,7 +35,9 @@ fn main() {
         .unwrap();
     f.write_all(output.to_string().as_bytes()).unwrap();
 
-    git::git_commit_and_tag(version);
+    if use_git {
+        git::git_commit_and_tag(version);
+    }
 }
 
 fn read_file(file: &Path) -> String {
