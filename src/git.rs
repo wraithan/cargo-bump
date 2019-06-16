@@ -5,7 +5,7 @@ pub fn git_check() {
         .args(&["status", "--porcelain"])
         .output()
         .expect("This tool requires git. Please install git and try again.");
-    if output.stdout.len() > 0 {
+    if !output.stdout.is_empty() {
         panic!("Working directory is not clean. Please commit changes before trying to update the version.");
     }
 }
