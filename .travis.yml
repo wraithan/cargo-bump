@@ -4,7 +4,8 @@ rust:
   - beta
   - nightly
 before_script:
-  - rustup component add rustfmt clippy
+  - rustup component add rustfmt
+  - rustup component add clippy || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
 script:
   - cargo build
   - cargo test
