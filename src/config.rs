@@ -70,7 +70,7 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
 
 pub struct Config {
     pub version_modifier: VersionModifier,
-    pub manifest: PathBuf,
+    pub manifests: Vec<PathBuf>,
     pub git_tag: bool,
 }
 
@@ -86,20 +86,22 @@ impl Config {
             metadata_cmd.manifest_path(path);
         }
         let metadata = metadata_cmd.exec().expect("get cargo metadata");
-        if metadata.workspace_members.len() == 1 {
-            Config {
-                version_modifier: VersionModifier {
-                    mod_type,
-                    build_metadata,
-                    pre_release,
-                },
-                manifest: metadata[&metadata.workspace_members[0]]
-                    .manifest_path
-                    .clone(),
-                git_tag,
-            }
-        } else {
-            panic!("Workspaces are not supported yet.");
+        let mut manifests = Vec::new();
+        for member in metadata.workspace_members.iter() {
+            let path = metadata[member]
+                .manifest_path
+                .clone();
+            println!("{:?}", path);
+            manifests.push(path);
+        }
+        Config {
+            version_modifier: VersionModifier {
+                mod_type,
+                build_metadata,
+                pre_release,
+            },
+            manifests,
+            git_tag,
         }
     }
 }
@@ -117,7 +119,7 @@ fn parse_identifiers(value: &str) -> Vec<Identifier> {
         .collect()
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ModifierType {
     Replace(Version),
     Major,
@@ -137,7 +139,7 @@ impl FromStr for ModifierType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct VersionModifier {
     pub mod_type: ModifierType,
     pub build_metadata: Option<Vec<Identifier>>,
@@ -181,7 +183,7 @@ mod tests {
         let matches = parser.get_matches_from_safe(input).unwrap();
         let config = Config::from_matches(matches);
         assert_eq!(config.version_modifier, version_mod);
-        assert_eq!(config.manifest, manifest);
+        assert_eq!(config.manifests[0], manifest);
     }
 
     #[test]

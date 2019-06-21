@@ -18,25 +18,25 @@ use semver::Version;
 
 fn main() {
     let conf = config::get_config();
-    let raw_data = read_file(&conf.manifest);
     let use_git = conf.git_tag;
-
     if use_git {
         git::git_check();
     }
+    let mut version= "0.0.1".to_string();
+    for manifest in &conf.manifests {
+        let raw_data = read_file(manifest);
+        let output = update_toml_with_version(&raw_data, conf.version_modifier.clone());
+        version = output["package"]["version"].as_str().unwrap().into();
 
-    let output = update_toml_with_version(&raw_data, conf.version_modifier);
-    let version = output["package"]["version"].as_str().unwrap();
-
-    let mut f = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(&conf.manifest)
-        .unwrap();
-    f.write_all(output.to_string().as_bytes()).unwrap();
-
+        let mut f = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(manifest)
+            .unwrap();
+        f.write_all(output.to_string().as_bytes()).unwrap();
+    }
     if use_git {
-        git::git_commit_and_tag(version);
+        git::git_commit_and_tag(&version);
     }
 }
 
