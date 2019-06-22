@@ -72,6 +72,7 @@ pub struct Config {
     pub version_modifier: VersionModifier,
     pub manifest: PathBuf,
     pub git_tag: bool,
+    pub lock_file: PathBuf,
 }
 
 impl Config {
@@ -86,6 +87,10 @@ impl Config {
             metadata_cmd.manifest_path(path);
         }
         let metadata = metadata_cmd.exec().expect("get cargo metadata");
+        let manifest = metadata[&metadata.workspace_members[0]]
+            .manifest_path
+            .clone();
+        let lock_file = manifest.with_extension("lock");
         if metadata.workspace_members.len() == 1 {
             Config {
                 version_modifier: VersionModifier {
@@ -93,10 +98,9 @@ impl Config {
                     build_metadata,
                     pre_release,
                 },
-                manifest: metadata[&metadata.workspace_members[0]]
-                    .manifest_path
-                    .clone(),
+                manifest,
                 git_tag,
+                lock_file,
             }
         } else {
             panic!("Workspaces are not supported yet.");
