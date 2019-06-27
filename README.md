@@ -7,7 +7,6 @@ This adds the command `cargo bump` which bumps the current version in your
 
 This is meant to be a clone of `npm version` with the `pre*` version specifiers
 omitted as I rarely see the pre-release versions on [crates.io](https://crates.io/).
-It does not do the git operations but is still useful.
 
 ## installation
 
@@ -19,7 +18,7 @@ Install using cargo:
 
 Increment the patch version: `cargo bump` or `cargo bump patch`
 
-Increment the minor version: `cargo bump minor`
+Increment the minor version and create a git tag: `cargo bump minor --git-tag`
 
 Set the version number directly: `cargo bump 13.3.7`
 
@@ -32,6 +31,7 @@ USAGE:
 FLAGS:
     -h, --help       Prints help information
     -v, --version    Prints version information
+    -g, --git-tag    Commits the new version and creates a git tag
 
 ARGS:
     <version>    Version should be a semver (https://semver.org/) string or the
