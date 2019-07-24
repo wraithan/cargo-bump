@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 
+extern crate cargo;
 extern crate cargo_metadata;
 extern crate clap;
 extern crate semver;
@@ -7,6 +8,7 @@ extern crate toml_edit;
 
 mod config;
 mod git;
+mod lock;
 mod version;
 
 use std::fs::{File, OpenOptions};
@@ -34,6 +36,8 @@ fn main() {
         .open(&conf.manifest)
         .unwrap();
     f.write_all(output.to_string().as_bytes()).unwrap();
+
+    lock::update_lock(&conf.manifest);
 
     if use_git {
         git::git_commit_and_tag(version);
