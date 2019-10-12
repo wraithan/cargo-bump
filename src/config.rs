@@ -66,12 +66,20 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
                 .long("git-tag")
                 .help("Optional commit the updated version and create a git tag."),
         )
+        .arg(
+            Arg::with_name("run-build")
+                .short("r")
+                .long("run-buid")
+                .help("Optional run `cargo build` before handling any git logic.
+                This has the added benefit of fixing the Cargo.lock before the git commits are made."),
+        )
 }
 
 pub struct Config {
     pub version_modifier: VersionModifier,
     pub manifest: PathBuf,
     pub git_tag: bool,
+    pub run_build: bool,
 }
 
 impl Config {
@@ -81,6 +89,7 @@ impl Config {
         let build_metadata = matches.value_of("build-metadata").map(parse_identifiers);
         let pre_release = matches.value_of("pre-release").map(parse_identifiers);
         let git_tag = matches.is_present("git-tag");
+        let run_build = matches.is_present("run-build");
         let mut metadata_cmd = MetadataCommand::new();
         if let Some(path) = matches.value_of("manifest-path") {
             metadata_cmd.manifest_path(path);
@@ -97,6 +106,7 @@ impl Config {
                     .manifest_path
                     .clone(),
                 git_tag,
+                run_build,
             }
         } else {
             panic!("Workspaces are not supported yet.");

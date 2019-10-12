@@ -5,6 +5,7 @@ extern crate clap;
 extern crate semver;
 extern crate toml_edit;
 
+mod build;
 mod config;
 mod git;
 mod version;
@@ -20,6 +21,7 @@ fn main() {
     let conf = config::get_config();
     let raw_data = read_file(&conf.manifest);
     let use_git = conf.git_tag;
+    let run_build = conf.run_build;
 
     if use_git {
         git::git_check();
@@ -34,6 +36,10 @@ fn main() {
         .open(&conf.manifest)
         .unwrap();
     f.write_all(output.to_string().as_bytes()).unwrap();
+
+    if run_build {
+        build::run();
+    }
 
     if use_git {
         git::git_commit_and_tag(version);
