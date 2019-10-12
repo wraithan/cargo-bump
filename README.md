@@ -26,14 +26,25 @@ Set the version number directly: `cargo bump 13.3.7`
 
 ```
 USAGE:
-    cargo bump [FLAGS] [<version> | major | minor | patch]
+    cargo bump [<version> | major | minor | patch] [FLAGS]
+
+    Version parts: ${MAJOR}.${MINOR}.${PATCH}-${PRE-RELEASE}+${BUILD}
+    Example: 3.1.4-alpha+159
 
 FLAGS:
-    -h, --help       Prints help information
-    -v, --version    Prints version information
-    -g, --git-tag    Commits the new version and creates a git tag
+    -g, --git-tag     Optional commit the updated version and create a git tag.
+    -h, --help        Prints help information
+    -r, --run-buid    Optional run `cargo build` before handling any git logic.
+                                      This has the added benefit of fixing the Cargo.lock before the git commits are
+                      made.
+    -v, --version     Prints version information
+
+OPTIONS:
+    -b, --build <BUILD>                 Optional build metadata for this version.
+        --manifest-path <PATH>          Optional path to Cargo.toml
+    -p, --pre-release <RELEASE TYPE>    Optional pre-release information.
 
 ARGS:
-    <version>    Version should be a semver (https://semver.org/) string or the
-                 position of the current version to increment: major, minor or patch.
+    <version>    Version should be a semver (https://semver.org/) string or the position of the current version to
+                 increment: major, minor or patch.
 ```
