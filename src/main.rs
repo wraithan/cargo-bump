@@ -20,6 +20,7 @@ fn main() {
     let conf = config::get_config();
     let raw_data = read_file(&conf.manifest);
     let use_git = conf.git_tag;
+    let prefix = conf.prefix;
 
     if use_git {
         git::git_check();
@@ -36,7 +37,7 @@ fn main() {
     f.write_all(output.to_string().as_bytes()).unwrap();
 
     if use_git {
-        git::git_commit_and_tag(version);
+        git::git_commit_and_tag(&format!("{}{}", prefix, version));
     }
 }
 
