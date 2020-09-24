@@ -22,7 +22,7 @@ fn main() {
     let use_git = conf.git_tag;
 
     if use_git {
-        git::git_check();
+        git::check();
     }
 
     let output = update_toml_with_version(&raw_data, conf.version_modifier);
@@ -36,7 +36,7 @@ fn main() {
     f.write_all(output.to_string().as_bytes()).unwrap();
 
     if use_git {
-        git::git_commit_and_tag(version);
+        git::commit_and_tag(version);
     }
 }
 

@@ -1,6 +1,6 @@
 use std::process::Command;
 
-pub fn git_check() {
+pub fn check() {
     let output = Command::new("git")
         .args(&["status", "--porcelain"])
         .output()
@@ -10,21 +10,30 @@ pub fn git_check() {
     }
 }
 
-pub fn git_tag(version: &str) {
+pub fn tag(version: &str) {
     Command::new("git")
         .args(&["tag", "-am", version, version])
         .status()
         .expect("Something went wrong when creating a git tag.");
 }
 
-pub fn git_commit(version: &str) {
+pub fn commit(version: &str) {
     Command::new("git")
         .args(&["commit", "-am", version])
         .status()
         .expect("Something went wrong trying to commit the new version.");
 }
 
-pub fn git_commit_and_tag(version: &str) {
-    git_commit(version);
-    git_tag(version);
+pub fn commit_and_tag(version: &str) {
+    commit(version);
+    tag(version);
+}
+
+pub fn log() -> String {
+    let output = Command::new("git")
+        .args(&["log", "-1", "--pretty=%B"])
+        .output()
+        .expect("Something went wrong trying to read the most recent commit message.")
+        .stdout;
+    String::from_utf8(output).expect("Commit message was not valid UTF-8")
 }
