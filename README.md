@@ -20,13 +20,15 @@ Increment the patch version: `cargo bump` or `cargo bump patch`
 
 Increment the minor version and create a git tag: `cargo bump minor --git-tag`
 
+Increment the version based on the most recent commit message: `cargo bump auto`
+
 Set the version number directly: `cargo bump 13.3.7`
 
 ## usage
 
 ```
 USAGE:
-    cargo bump [FLAGS] [<version> | major | minor | patch]
+    cargo bump [FLAGS] [<version> | major | minor | patch | auto]
 
 FLAGS:
     -h, --help       Prints help information
@@ -35,5 +37,8 @@ FLAGS:
 
 ARGS:
     <version>    Version should be a semver (https://semver.org/) string or the
-                 position of the current version to increment: major, minor or patch.
+                 position of the current version to increment: major, minor, patch, or auto.
+
+                 If the version is 'auto', the most recent git commit message is checked for
+                 the presence of '[major]' or '[minor]'. If neither is found, it defaults to 'patch'.
 ```

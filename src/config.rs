@@ -16,7 +16,7 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
         .version(VERSION)
         .author("Wraithan McCarroll <xwraithanx@gmail.com>")
         .usage(
-            "cargo bump [<version> | major | minor | patch] [FLAGS]
+            "cargo bump [<version> | major | minor | patch | auto] [FLAGS]
 
     Version parts: ${MAJOR}.${MINOR}.${PATCH}-${PRE-RELEASE}+${BUILD}
     Example: 3.1.4-alpha+159",
@@ -42,7 +42,10 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
         )
         .arg(Arg::with_name("version").index(2).help(
             "Version should be a semver (https://semver.org/) string or the \
-             position of the current version to increment: major, minor or patch.",
+             position of the current version to increment: major, minor, patch, or auto.
+
+If the version is 'auto', the most recent git commit message is checked for the \
+             presence of '[major]' or '[minor]'. If neither is found, it defaults to 'patch'.",
         ))
         .arg(
             Arg::with_name("pre-release")
@@ -77,7 +80,7 @@ pub struct Config {
 impl Config {
     fn from_matches(matches: ArgMatches) -> Config {
         let mod_type = ModifierType::from_str(matches.value_of("version").unwrap_or("patch"))
-            .expect("Invalid semver version, expected version or major, minor, patch");
+            .expect("Invalid semver version, expected version or major, minor, patch, auto");
         let build_metadata = matches.value_of("build-metadata").map(parse_identifiers);
         let pre_release = matches.value_of("pre-release").map(parse_identifiers);
         let git_tag = matches.is_present("git-tag");
@@ -123,6 +126,7 @@ pub enum ModifierType {
     Major,
     Minor,
     Patch,
+    Auto,
 }
 
 impl FromStr for ModifierType {
@@ -132,6 +136,7 @@ impl FromStr for ModifierType {
             "major" => ModifierType::Major,
             "minor" => ModifierType::Minor,
             "patch" => ModifierType::Patch,
+            "auto" => ModifierType::Auto,
             _ => ModifierType::Replace(Version::parse(input)?),
         })
     }
@@ -176,7 +181,7 @@ mod tests {
     fn test_config(input: Vec<&str>, version_mod: VersionModifier) {
         let parser = build_cli_parser();
         let root = env::current_dir().unwrap();
-        let mut manifest = root.clone();
+        let mut manifest = root;
         manifest.push("Cargo.toml");
         let matches = parser.get_matches_from_safe(input).unwrap();
         let config = Config::from_matches(matches);

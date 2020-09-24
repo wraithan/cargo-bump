@@ -1,4 +1,5 @@
 use config::{ModifierType, VersionModifier};
+use git;
 use semver::Version;
 
 pub fn update_version(old: &mut Version, by: VersionModifier) {
@@ -14,6 +15,16 @@ pub fn update_version(old: &mut Version, by: VersionModifier) {
         }
         ModifierType::Patch => {
             old.increment_patch();
+        }
+        ModifierType::Auto => {
+            let commit_message = git::log();
+            if commit_message.contains("[major]") {
+                old.increment_major();
+            } else if commit_message.contains("[minor]") {
+                old.increment_minor();
+            } else {
+                old.increment_patch();
+            }
         }
     }
 

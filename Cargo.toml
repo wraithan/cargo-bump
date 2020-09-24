@@ -6,7 +6,7 @@ license = "ISC"
 name = "cargo-bump"
 readme = "README.md"
 repository = "https://github.com/wraithan/cargo-bump"
-version = "1.1.0"
+version = "1.2.0"
 
 [badges]
 travis-ci = {repository = "wraithan/cargo-bump", branch = "master" }
@@ -14,5 +14,5 @@ travis-ci = {repository = "wraithan/cargo-bump", branch = "master" }
 [dependencies]
 clap = "2.26.0"
 semver = "0.9.0"
-toml_edit = "0.1.3"
+toml_edit = "0.2.0"
 cargo_metadata = "0.7.0"
