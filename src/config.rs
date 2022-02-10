@@ -2,6 +2,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use cargo_metadata::MetadataCommand;
 use clap::{App, AppSettings, Arg, ArgMatches};
+use same_file::is_same_file;
 use semver::{Identifier, SemVerError, Version};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -82,7 +83,8 @@ impl Config {
         let pre_release = matches.value_of("pre-release").map(parse_identifiers);
         let git_tag = matches.is_present("git-tag");
         let mut metadata_cmd = MetadataCommand::new();
-        if let Some(path) = matches.value_of("manifest-path") {
+        let manifest_path = matches.value_of("manifest-path");
+        if let Some(path) = manifest_path {
             metadata_cmd.manifest_path(path);
         }
         let metadata = metadata_cmd.exec().expect("get cargo metadata");
@@ -99,7 +101,25 @@ impl Config {
                 git_tag,
             }
         } else {
-            panic!("Workspaces are not supported yet.");
+            if let Some(path) = manifest_path {
+                // We have a path to a specific manifest,
+                // lets try and find it in the workspace members.
+                for m in &metadata.workspace_members {
+                    let pkg = &metadata[m];
+                    if is_same_file(&pkg.manifest_path, path).expect("same file") {
+                        return Config {
+                            version_modifier: VersionModifier {
+                                mod_type,
+                                build_metadata,
+                                pre_release,
+                            },
+                            manifest: pkg.manifest_path.clone(),
+                            git_tag,
+                        };
+                    }
+                }
+            }
+            panic!("Workspace detected, use --manitfest-path to specify which workspace member to bump.");
         }
     }
 }

@@ -2,6 +2,7 @@
 
 extern crate cargo_metadata;
 extern crate clap;
+extern crate same_file;
 extern crate semver;
 extern crate toml_edit;
 
