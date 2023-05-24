@@ -36,10 +36,12 @@ fn main() {
         .unwrap();
     f.write_all(output.to_string().as_bytes()).unwrap();
 
-    Command::new("cargo")
-    .args(&["generate-lockfile", "--offline", "--manifest-path", &conf.manifest.to_string_lossy()])
-    .status()
-    .expect("Failed to generate lockfile");
+    if !&conf.ignore_lockfile {
+        Command::new("cargo")
+        .args(&["generate-lockfile", "--offline", "--manifest-path", &conf.manifest.to_string_lossy()])
+        .status()
+        .expect("Failed to generate lockfile");
+    }
 
     if use_git {
         git::git_commit_and_tag(version);
