@@ -40,13 +40,20 @@ fn build_cli_parser<'a, 'b>() -> App<'a, 'b> {
                 .takes_value(true)
                 .help("Optional path to Cargo.toml"),
         )
+        .arg(
+            Arg::with_name("package")
+                .short("p")
+                .long("package")
+                .value_name("PACKAGE")
+                .takes_value(true)
+                .help("Workspace package to bump. Does nothing if we aren't in a workspace"),
+        )
         .arg(Arg::with_name("version").index(2).help(
             "Version should be a semver (https://semver.org/) string or the \
              position of the current version to increment: major, minor or patch.",
         ))
         .arg(
             Arg::with_name("pre-release")
-                .short("p")
                 .long("pre-release")
                 .value_name("RELEASE TYPE")
                 .takes_value(true)
@@ -99,7 +106,32 @@ impl Config {
                 git_tag,
             }
         } else {
-            panic!("Workspaces are not supported yet.");
+            let mut packages = Vec::with_capacity(metadata.workspace_members.len());
+
+            for member in metadata.workspace_members.iter() {
+                packages.push(&metadata[&member]);
+            }
+
+            if let Some(package) = matches.value_of("package") {
+                if let Some(package) = packages.iter().find(|p| p.name == package) {
+                    Config {
+                        version_modifier: VersionModifier {
+                            mod_type,
+                            build_metadata,
+                            pre_release,
+                        },
+                        manifest: package.manifest_path.clone(),
+                        git_tag,
+                    }
+                } else {
+                    panic!(
+                        "Unknown package. Possible packages are: {:?}",
+                        packages.iter().map(|p| &p.name).collect::<Vec<&String>>()
+                    );
+                }
+            } else {
+                panic!("Please specify a package with `-p` when using in workspaces. Possible packages are: {:?}", packages.iter().map(|p| &p.name).collect::<Vec<&String>>());
+            }
         }
     }
 }
